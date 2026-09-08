@@ -1,0 +1,42 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: aioa-gateway
+  cloud:
+    gateway:
+      # 路由表：/api/v1/{domain}/** → 对应微服务
+      routes:
+        - id: tenant-svc
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/v1/auth/**,/api/v1/tenant/**,/api/v1/users/**,/api/v1/roles/**
+        - id: session-svc
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/v1/sessions/**
+        - id: agent-svc
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/v1/agents/**,/api/v1/tools/**,/api/v1/approvals/**,/api/v1/connectors/**
+        - id: ledger-svc
+          uri: http://localhost:8084
+          predicates:
+            - Path=/api/v1/ledger/**,/api/v1/quota/**,/api/v1/usage/**
+      # SSE / WebSocket 不读响应体，需要保持流式
+      default-filters: []
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    io.aioa: INFO
+    org.springframework.cloud.gateway: INFO

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.aioa.tenant.repo.mapper.UserMapper">
+
+    <select id="findByTenantAndUsername" resultType="io.aioa.tenant.repo.entity.UserEntity">
+        SELECT id, id_str, tenant_id, username, password_hash,
+               display_name, avatar, email, phone, status,
+               created_at, updated_at
+        FROM users
+        WHERE tenant_id = #{tenantId} AND username = #{username} AND deleted_at IS NULL
+        LIMIT 1
+    </select>
+
+</mapper>

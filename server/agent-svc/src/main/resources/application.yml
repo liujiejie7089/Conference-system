@@ -1,0 +1,41 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: aioa-agent-svc
+  datasource:
+    url: jdbc:mysql://localhost:3306/aioa_agent?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Singapore&allowPublicKeyRetrieval=true&useSSL=false
+    username: root
+    password:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 20
+  redis:
+    host: localhost
+    port: 6379
+    database: 2
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deletedAt
+      logic-delete-value: 'NOW()'
+      logic-not-delete-value: 'NULL'
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    io.aioa: INFO

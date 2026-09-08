@@ -1,0 +1,41 @@
+# Maven
+.m2-repo/
+*/target/
+**/target/
+
+# Logs
+*.log
+*.err.log
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+*.env.local
+
+# Node
+node_modules/
+dist/
+.uni-app/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Build
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Local config
+server/settings.xml

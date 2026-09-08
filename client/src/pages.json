@@ -1,0 +1,76 @@
+{
+  "pages": [
+    {
+      "path": "pages/home/index",
+      "style": {
+        "navigationBarTitleText": "AIOA",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/expert/index",
+      "style": {
+        "navigationBarTitleText": "专家市场"
+      }
+    },
+    {
+      "path": "pages/session/index",
+      "style": {
+        "navigationBarTitleText": "会话"
+      }
+    },
+    {
+      "path": "pages/mine/index",
+      "style": {
+        "navigationBarTitleText": "我的"
+      }
+    },
+    {
+      "path": "pages/login/index",
+      "style": {
+        "navigationBarTitleText": "登录"
+      }
+    },
+    {
+      "path": "pages/chat/index",
+      "style": {
+        "navigationBarTitleText": "对话"
+      }
+    },
+    {
+      "path": "pages/bill/index",
+      "style": {
+        "navigationBarTitleText": "用量账单"
+      }
+    },
+    {
+      "path": "pages/log/index",
+      "style": {
+        "navigationBarTitleText": "操作记录"
+      }
+    },
+    {
+      "path": "pages/skill/index",
+      "style": {
+        "navigationBarTitleText": "技能调用"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f7f8fa"
+  },
+  "tabBar": {
+    "color": "#7a7e83",
+    "selectedColor": "#1677ff",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      { "pagePath": "pages/home/index",    "text": "首页" },
+      { "pagePath": "pages/expert/index",  "text": "专家" },
+      { "pagePath": "pages/session/index", "text": "会话" },
+      { "pagePath": "pages/mine/index",    "text": "我的" }
+    ]
+  }
+}

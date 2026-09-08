@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>AIOA</title>
+    <script>
+      var coverSupport = 'querySelector' in document && 'addEventListener' in window;
+      document.addEventListener('DOMContentLoaded', function () {
+        if (!coverSupport) return;
+        Array.prototype.forEach.call(document.querySelectorAll('link[rel*=preload]'), function (cb) { cb.rel = 'stylesheet'; });
+      });
+    </script>
+    <!--preload-links-->
+    <!--app-context-->
+  </head>
+  <body>
+    <div id="app"><!--app-html--></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
