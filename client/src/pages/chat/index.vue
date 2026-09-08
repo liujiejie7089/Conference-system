@@ -3,7 +3,21 @@
     <view class="header">
       <view class="back" @click="back">‹</view>
       <view class="title">{{ agentName || sessionTitle || '对话' }}</view>
-      <view class="muted model-tag">模型：智能路由</view>
+      <view class="model-tag" @click="showModelPicker = true">{{ currentModelLabel }} ▾</view>
+    </view>
+
+    <!-- 模型选择弹窗 FR-D4 -->
+    <view v-if="showModelPicker" class="modal-mask" @click="showModelPicker = false">
+      <view class="modal" @click.stop>
+        <view class="modal-title">选择模型</view>
+        <view v-for="m in modelOptions" :key="m.value" class="opt-row" :class="{ on: currentModel === m.value }" @click="pickModel(m.value)">
+          <view class="opt-info">
+            <view class="opt-name">{{ m.label }}</view>
+            <view class="opt-desc">{{ m.desc }}</view>
+          </view>
+          <text v-if="currentModel === m.value" class="check">✓</text>
+        </view>
+      </view>
     </view>
 
     <scroll-view class="msgs" scroll-y="true" :scroll-top="scrollTop" :scroll-with-animation="true">
@@ -27,11 +41,14 @@
         <view class="bubble typing">{{ streamText || '思考中…' }}<text class="cursor">▍</text></view>
       </view>
       <view v-if="quotaExhausted" class="msg left">
-        <view class="bubble">
-          今日免费额度已用完。你可以：
-          ① 等待明日免费额度发放
-          ② 购买词元包（首页入口）
-          ③ 联系管理员开通企业套餐
+        <view class="bubble quota-empty">
+          <view class="qe-title">⚠️ 额度已用完</view>
+          <view class="qe-desc">请选择以下方式继续使用：</view>
+          <view class="qe-btns">
+            <button class="qe-btn" @click="goMember">👑 升级会员</button>
+            <button class="qe-btn" @click="goMember">💎 充值词元包</button>
+            <button class="qe-btn free" @click="useFreeModel">🆓 切换免费模型</button>
+          </view>
         </view>
       </view>
     </scroll-view>
@@ -57,9 +74,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, nextTick } from 'vue';
+import { ref, reactive, onMounted, nextTick, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
-import { sessionApi, ledgerApi, streamChat } from '@/api';
+import { sessionApi, messageApi, ledgerApi, membershipApi, streamChat } from '@/api';
+import type { MessageVo } from '@/api';
 
 interface Msg {
   id: string;
@@ -85,6 +103,18 @@ const presetQuestion = ref('');
 const kbOn = ref(true);
 const quotaExhausted = ref(false);
 const recommendations = ref<string[]>([]);
+const showModelPicker = ref(false);
+const currentModel = ref('auto');
+
+const modelOptions = [
+  { value: 'auto', label: '智能路由', desc: '平台自动选择最优模型' },
+  { value: 'deepseek-chat', label: 'DeepSeek Chat', desc: '标准模型 · 扣额度' },
+  { value: 'deepseek-free', label: 'DeepSeek Free', desc: '免费模型 · 每日5000额度' }
+];
+const currentModelLabel = computed(() => {
+  const m = modelOptions.find(x => x.value === currentModel.value);
+  return m ? m.label : '智能路由';
+});
 
 onLoad((opts: any) => {
   agentId.value = opts.agentId || '';
@@ -95,7 +125,14 @@ onLoad((opts: any) => {
 });
 
 onMounted(async () => {
-  if (!sessionId.value && agentId.value) {
+  // 已有会话：加载历史消息（FR-D2 多轮上下文 / FR-D3 历史会话）
+  if (sessionId.value) {
+    await loadHistory();
+    return;
+  }
+
+  // 新会话：先建会话，再展示欢迎气泡 + 推荐问题
+  if (agentId.value) {
     try {
       const r = await sessionApi.create({
         agentId: agentId.value ? Number(agentId.value) : undefined,
@@ -122,6 +159,24 @@ onMounted(async () => {
     setTimeout(() => send(), 300);
   }
 });
+
+async function loadHistory() {
+  try {
+    const r = await messageApi.list(sessionId.value);
+    if (r.code === 0 && r.data) {
+      r.data.forEach((m: MessageVo) => {
+        messages.push({
+          id: m.id,
+          role: m.role === 1 ? 'user' : 'assistant',
+          content: m.content,
+          meta: m.tokenOutput != null ? `本次消耗 ${m.tokenOutput} 词元` : undefined,
+          citations: (m.citations || []).map(c => ({ title: c.title, url: c.url || undefined }))
+        });
+      });
+      scrollBottom();
+    }
+  } catch { /* ignore */ }
+}
 
 function pickIntro(name: string): string {
   if (name.includes('政策') || name.includes('咨询')) return '熟悉国省市三级产业扶持政策，可基于你上传的政策文件精准解答。';
@@ -167,6 +222,7 @@ async function send() {
   await scrollBottom();
 
   let toolInfo = '';
+  let blockedReason = '';
 
   try {
     await streamChat(sessionId.value, text, (event) => {
@@ -184,17 +240,30 @@ async function send() {
         case 'tool_result':
           toolInfo = `🔧 ${event.tool_name} 执行完成`;
           break;
+        case 'blocked':
+          // 内容合规拦截（输入或输出）：丢弃已流出的文本，改显合规提示
+          streamText.value = '';
+          blockedReason = event.reason || '内容安全拦截';
+          break;
+        case 'approval_required':
+          streamText.value = '';
+          blockedReason = event.reason || '需人工审批';
+          break;
         case 'done':
           const tokens = event.tokens_used || 0;
-          const meta = `本次消耗 ${tokens} 词元 · 模型：DeepSeek · 已入账本并留痕`;
+          const inTok = event.input_tokens || 0;
+          const outTok = event.output_tokens || 0;
+          const meta = `本次消耗 ${tokens} 词元（输入 ${inTok} · 输出 ${outTok}）· 已入账本并留痕`;
           messages.push({
             id: Math.random().toString(36),
             role: 'assistant',
-            content: streamText.value || event.content || '',
-            meta,
+            content: blockedReason ? `⚠️ ${blockedReason}` : (streamText.value || event.content || ''),
+            meta: blockedReason ? undefined : meta,
             toolInfo: toolInfo || undefined,
+            citations: blockedReason ? undefined : (event.citations || []).map(c => ({ title: c.title, url: c.url || undefined }))
           });
           streamText.value = '';
+          blockedReason = '';
           streaming.value = false;
           scrollBottom();
           break;
@@ -225,6 +294,23 @@ async function send() {
 function quickAsk(q: string) {
   input.value = q;
   send();
+}
+function goMember() {
+  uni.navigateTo({ url: '/pages/member/index' });
+}
+function pickModel(m: string) {
+  currentModel.value = m;
+  showModelPicker.value = false;
+  if (m === 'deepseek-free' || m === 'deepseek-chat') {
+    membershipApi.switchModel(m).then(r => {
+      uni.showToast({ title: r.code === 0 ? '模型已切换' : '切换失败', icon: 'none' });
+    });
+  } else {
+    uni.showToast({ title: '已切换为智能路由', icon: 'none' });
+  }
+}
+function useFreeModel() {
+  uni.navigateTo({ url: '/pages/member/index?model=free' });
 }
 function toggleKB() {
   kbOn.value = !kbOn.value;
@@ -296,4 +382,20 @@ function back() {
   font-size: 13px;
 }
 .send[disabled] { opacity: 0.5; }
+.quota-empty { border: 1.5px solid #f59e0b; background: #fffbeb; }
+.qe-title { font-weight: 700; color: #d97706; font-size: 14px; }
+.qe-desc { font-size: 12px; color: #6b7486; margin: 6px 0; }
+.qe-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.qe-btn { background: #2f6fed; color: #fff; border: none; border-radius: 16px; padding: 6px 12px; font-size: 12px; }
+.qe-btn.free { background: #12a56b; }
+
+.modal-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 999; display: flex; align-items: flex-end; justify-content: center; }
+.modal { background: #fff; border-radius: 14px 14px 0 0; padding: 20px; width: 100%; max-width: 420px; }
+.modal-title { font-size: 16px; font-weight: 700; margin-bottom: 14px; text-align: center; }
+.opt-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eef0f5; }
+.opt-row:last-child { border-bottom: none; }
+.opt-row.on { background: #f4f8ff; border-radius: 8px; padding: 12px 8px; }
+.opt-name { font-size: 14px; font-weight: 600; }
+.opt-desc { font-size: 11px; color: #6b7486; margin-top: 2px; }
+.check { color: #2f6fed; font-size: 18px; font-weight: 700; }
 </style>

@@ -4,6 +4,7 @@ import io.aioa.common.api.BizException;
 import io.aioa.common.api.ErrorCode;
 import io.aioa.common.api.R;
 import io.aioa.common.auth.JwtUtil;
+import io.aioa.common.client.OperationLogClient;
 import io.aioa.tenant.api.dto.LoginRequest;
 import io.aioa.tenant.api.dto.LoginResponse;
 import io.aioa.tenant.repo.entity.UserEntity;
@@ -30,6 +31,7 @@ public class AuthController {
     private static final long DEFAULT_TENANT_ID = 1L; // 默认租户 id
 
     private final UserMapper userMapper;
+    private final OperationLogClient operationLogClient;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @PostMapping("/sso")
@@ -47,6 +49,9 @@ public class AuthController {
 
         String token = JwtUtil.issue(user.getId(), user.getTenantId(), user.getUsername(), TTL_SECONDS);
         log.info("[sso] login success uid={} name={}", user.getId(), user.getUsername());
+
+        // FR-H1 操作留痕：登录
+        operationLogClient.log(token, "login", user.getUsername(), 1, "用户登录成功");
 
         LoginResponse resp = LoginResponse.builder()
                 .token(token)

@@ -18,7 +18,7 @@
       <view class="muted">今日免费额度剩 {{ formatNum(dailyFree) }} · 额度变化实时留痕</view>
       <view class="btn-row">
         <button class="btn small" @click="goBill">用量账单</button>
-        <button class="btn ghost small" @click="toast('已打开词元包商品列表（演示）')">购买词元包</button>
+        <button class="btn ghost small" @click="goMember">购买词元包</button>
       </view>
     </view>
 
@@ -126,6 +126,9 @@ function goSession(s: SessionVo) {
 }
 function goBill() {
   uni.navigateTo({ url: '/pages/bill/index' });
+}
+function goMember() {
+  uni.navigateTo({ url: '/pages/member/index' });
 }
 function openSkill(name: string) {
   uni.navigateTo({ url: `/pages/skill/index?name=${encodeURIComponent(name)}` });

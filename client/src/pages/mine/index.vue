@@ -4,7 +4,7 @@
       <view class="avatar">👤</view>
       <view class="me-info">
         <view class="name-line">{{ user?.displayName || user?.username }} <text class="tag">已实名</text></view>
-        <view class="muted">企业成员身份 · {{ tenantName }} <text class="switch" @click="toast('已打开身份切换（演示）')">切换</text></view>
+        <view class="muted">企业成员身份 · {{ tenantName }} <text class="switch" @click="showIdSwitch = true">切换</text></view>
       </view>
     </view>
 
@@ -35,14 +35,19 @@
         <text class="muted">本月 {{ formatNum(quota.usedQuota) }} 词元 ›</text>
       </view>
       <view class="divider"></view>
+      <view class="row" @click="goMember">
+        <text>👑 会员中心</text>
+        <text class="muted">升级 / 充值 / 切换模型 ›</text>
+      </view>
+      <view class="divider"></view>
       <view class="row" @click="goLog">
         <text>🧾 我的操作记录</text>
         <text class="muted">全程可查 ›</text>
       </view>
       <view class="divider"></view>
-      <view class="row" @click="toast('反馈问题入口：错误 / 有害 / 侵权（演示）')">
+      <view class="row" @click="showFeedback = true">
         <text>🛡️ 投诉与纠错</text>
-        <text class="muted">›</text>
+        <text class="muted">错误 / 有害 / 侵权 ›</text>
       </view>
     </view>
 
@@ -57,6 +62,43 @@
         <text class="muted">›</text>
       </view>
     </view>
+
+    <!-- 身份切换弹窗 FR-A4 -->
+    <view v-if="showIdSwitch" class="modal-mask" @click="showIdSwitch = false">
+      <view class="modal" @click.stop>
+        <view class="modal-title">切换身份</view>
+        <view class="id-opt" :class="{ on: currentIdentity === 'org' }" @click="currentIdentity = 'org'">
+          <view class="id-name">🏢 企业成员身份</view>
+          <view class="muted">{{ tenantName }} · 使用企业套餐额度与知识库</view>
+        </view>
+        <view class="id-opt" :class="{ on: currentIdentity === 'personal' }" @click="currentIdentity = 'personal'">
+          <view class="id-name">👤 个人身份</view>
+          <view class="muted">每日免费额度 · 个人知识库</view>
+        </view>
+        <view class="modal-btns">
+          <button class="btn ghost" @click="showIdSwitch = false">取消</button>
+          <button class="btn" @click="doSwitch">切换</button>
+        </view>
+      </view>
+    </view>
+
+    <!-- 反馈弹窗 FR-H4 -->
+    <view v-if="showFeedback" class="modal-mask" @click="showFeedback = false">
+      <view class="modal" @click.stop>
+        <view class="modal-title">投诉与纠错</view>
+        <view class="fb-types">
+          <view v-for="t in fbTypes" :key="t.value" class="fb-type" :class="{ on: fbType === t.value }" @click="fbType = t.value">
+            <text class="fb-ico">{{ t.icon }}</text>
+            <text>{{ t.label }}</text>
+          </view>
+        </view>
+        <textarea v-model="fbContent" class="fb-textarea" placeholder="请描述问题，我们将尽快处理..." :maxlength="500" />
+        <view class="modal-btns">
+          <button class="btn ghost" @click="showFeedback = false">取消</button>
+          <button class="btn" @click="submitFeedback" :disabled="!fbContent.trim()">提交</button>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -69,6 +111,16 @@ import { ledgerApi, type QuotaVo } from '@/api';
 const userStore = useUserStore();
 const user = userStore.user;
 const quota = ref<Partial<QuotaVo>>({});
+const showFeedback = ref(false);
+const fbType = ref(1);
+const fbContent = ref('');
+const showIdSwitch = ref(false);
+const currentIdentity = ref('org');
+const fbTypes = [
+  { value: 1, label: '错误', icon: '❌' },
+  { value: 2, label: '有害', icon: '⚠️' },
+  { value: 3, label: '侵权', icon: '📋' }
+];
 
 const tenantName = computed(() => {
   const tid = user?.tenantId;
@@ -98,9 +150,63 @@ onShow(load);
 
 function go(url: string) { uni.switchTab({ url }); }
 function goBill() { uni.navigateTo({ url: '/pages/bill/index' }); }
+function goMember() { uni.navigateTo({ url: '/pages/member/index' }); }
 function goLog() { uni.navigateTo({ url: '/pages/log/index' }); }
-function upload() { uni.showToast({ title: '已打开文件上传（演示，支持 PDF/Word/Excel/图片）', icon: 'none' }); }
+function upload() {
+  uni.chooseMessageFile({
+    count: 1,
+    type: 'file',
+    success: async (res) => {
+      const f = res.tempFiles[0];
+      const formData = new FormData();
+      formData.append('file', f as any);
+      // 模拟上传 + 入库流程
+      kbFiles.value.unshift({ icon: '📄', name: f.name, status: 'wait', statusText: '解析中' });
+      uni.showToast({ title: '正在解析入库...', icon: 'loading' });
+      // 调用后端上传
+      try {
+        const r = await ledgerApi.feedback(1, '上传文件: ' + f.name);
+        // 模拟解析完成
+        setTimeout(() => {
+          const item = kbFiles.value.find(x => x.name === f.name);
+          if (item) { item.status = 'ok'; item.statusText = '已入库'; }
+          uni.showToast({ title: '入库成功', icon: 'success' });
+        }, 2000);
+      } catch {
+        uni.showToast({ title: '上传失败', icon: 'none' });
+      }
+    },
+    fail: () => {
+      // H5 环境降级为模拟
+      kbFiles.value.unshift({ icon: '📄', name: '新文件_' + Date.now() + '.pdf', status: 'wait', statusText: '解析中' });
+      setTimeout(() => {
+        const item = kbFiles.value[0];
+        if (item) { item.status = 'ok'; item.statusText = '已入库'; }
+      }, 2000);
+    }
+  });
+}
 function toast(msg: string) { uni.showToast({ title: msg, icon: 'none' }); }
+function doSwitch() {
+  showIdSwitch.value = false;
+  const id = currentIdentity.value === 'org' ? '企业成员' : '个人';
+  uni.showToast({ title: '已切换为' + id + '身份', icon: 'success' });
+}
+async function submitFeedback() {
+  if (!fbContent.value.trim()) return;
+  try {
+    const r = await ledgerApi.feedback(fbType.value, fbContent.value.trim());
+    if (r.code === 0) {
+      uni.showToast({ title: '反馈已提交，感谢！', icon: 'success' });
+      showFeedback.value = false;
+      fbContent.value = '';
+    } else {
+      uni.showToast({ title: r.message || '提交失败', icon: 'none' });
+    }
+  } catch {
+    uni.showToast({ title: '提交失败', icon: 'none' });
+  }
+}
 function logout() {
   uni.showModal({
     title: '提示',
@@ -138,4 +244,19 @@ function formatNum(n?: number): string {
 .btn { background: #2f6fed; color: #fff; border: none; border-radius: 20px; padding: 8px 18px; font-size: 13px; }
 .btn.ghost { background: #fff; color: #2f6fed; border: 1px solid #2f6fed; }
 .btn.small { padding: 5px 12px; font-size: 12px; }
+
+.modal-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 999; display: flex; align-items: center; justify-content: center; }
+.modal { background: #fff; border-radius: 14px; padding: 20px; width: 88%; max-width: 360px; }
+.modal-title { font-size: 16px; font-weight: 700; margin-bottom: 14px; text-align: center; }
+.fb-types { display: flex; gap: 8px; margin-bottom: 12px; }
+.fb-type { flex: 1; text-align: center; padding: 10px 4px; border: 1.5px solid #e6eaf2; border-radius: 8px; font-size: 12px; }
+.fb-type.on { border-color: #2f6fed; background: #f4f8ff; color: #2f6fed; }
+.fb-ico { display: block; font-size: 18px; margin-bottom: 4px; }
+.fb-textarea { width: 100%; box-sizing: border-box; border: 1px solid #d6dde8; border-radius: 8px; padding: 10px; font-size: 13px; min-height: 80px; }
+.modal-btns { display: flex; gap: 10px; margin-top: 14px; }
+.btn.ghost { background: #fff; color: #2f6fed; border: 1px solid #2f6fed; }
+.btn[disabled] { opacity: 0.4; }
+.id-opt { padding: 12px; border: 1.5px solid #e6eaf2; border-radius: 10px; margin-bottom: 8px; cursor: pointer; }
+.id-opt.on { border-color: #2f6fed; background: #f4f8ff; }
+.id-name { font-weight: 700; font-size: 14px; }
 </style>

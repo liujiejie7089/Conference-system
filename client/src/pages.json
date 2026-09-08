@@ -54,6 +54,18 @@
       "style": {
         "navigationBarTitleText": "技能调用"
       }
+    },
+    {
+      "path": "pages/member/index",
+      "style": {
+        "navigationBarTitleText": "会员中心"
+      }
+    },
+    {
+      "path": "pages/todo/index",
+      "style": {
+        "navigationBarTitleText": "待办"
+      }
     }
   ],
   "globalStyle": {
@@ -68,6 +80,7 @@
     "borderStyle": "white",
     "list": [
       { "pagePath": "pages/home/index",    "text": "首页" },
+      { "pagePath": "pages/todo/index",    "text": "待办" },
       { "pagePath": "pages/expert/index",  "text": "专家" },
       { "pagePath": "pages/session/index", "text": "会话" },
       { "pagePath": "pages/mine/index",    "text": "我的" }

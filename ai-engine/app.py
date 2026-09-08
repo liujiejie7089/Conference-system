@@ -75,6 +75,14 @@ MOCK_ANSWER = (
 )
 
 
+def estimate_input_tokens(messages: list[ChatMessage]) -> int:
+    """粗略估算输入词元数（约 4 字符 ≈ 1 token），用于 mock 模式分列计量"""
+    total = 0
+    for m in messages:
+        total += len(m.content or "") + 4
+    return max(total // 4, 1)
+
+
 def mock_chat_response(messages: list[ChatMessage], tools: list[dict] | None = None):
     """Mock 模式：模拟 DeepSeek 返回"""
     user_msg = ""
@@ -228,10 +236,19 @@ async def chat_stream(req: ChatRequest):
         if use_mock:
             # Mock 流式输出
             result = mock_chat_response(req.messages, req.tools)
+            input_tokens = estimate_input_tokens(req.messages)
+            output_tokens = result["tokens"]
+            done_event = {
+                "type": "done",
+                "tokens_used": input_tokens + output_tokens,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "model": "mock",
+            }
             if result["tool_calls"]:
                 # 先返回 tool_call
                 yield f"data: {json.dumps({'type': 'tool_call', 'tool_calls': result['tool_calls']}, ensure_ascii=False)}\n\n"
-                yield f"data: {json.dumps({'type': 'done', 'tokens_used': result['tokens']})}\n\n"
+                yield f"data: {json.dumps(done_event, ensure_ascii=False)}\n\n"
                 return
             # 逐字输出文本
             text = result["content"]
@@ -239,7 +256,7 @@ async def chat_stream(req: ChatRequest):
                 chunk = text[i:i + 3]
                 yield f"data: {json.dumps({'type': 'text', 'content': chunk}, ensure_ascii=False)}\n\n"
                 await asyncio.sleep(0.05)
-            yield f"data: {json.dumps({'type': 'done', 'tokens_used': result['tokens']})}\n\n"
+            yield f"data: {json.dumps(done_event, ensure_ascii=False)}\n\n"
             return
 
         # 真实 DeepSeek 流式调用
@@ -250,12 +267,14 @@ async def chat_stream(req: ChatRequest):
             "messages": api_messages,
             "temperature": req.temperature,
             "stream": True,
+            "stream_options": {"include_usage": True},
         }
         if req.tools:
             kwargs["tools"] = req.tools
 
         stream = client.chat.completions.create(**kwargs)
-        total_tokens = 0
+        input_tokens = 0
+        output_tokens = 0
         for chunk in stream:
             if chunk.choices and chunk.choices[0].delta:
                 delta = chunk.choices[0].delta
@@ -265,8 +284,9 @@ async def chat_stream(req: ChatRequest):
                     for tc in delta.tool_calls:
                         yield f"data: {json.dumps({'type': 'tool_call', 'tool_calls': [tc.to_dict()]}, ensure_ascii=False)}\n\n"
             if chunk.usage:
-                total_tokens = chunk.usage.total_tokens
-        yield f"data: {json.dumps({'type': 'done', 'tokens_used': total_tokens})}\n\n"
+                input_tokens = chunk.usage.prompt_tokens
+                output_tokens = chunk.usage.completion_tokens
+        yield f"data: {json.dumps({'type': 'done', 'tokens_used': input_tokens + output_tokens, 'input_tokens': input_tokens, 'output_tokens': output_tokens, 'model': DEEPSEEK_MODEL}, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(
         event_generator(),

@@ -9,25 +9,25 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
+/**
+ * 操作留痕实体 FR-H1
+ * action: login / create_session / send_message / upload_file / recharge / delete_session / switch_model
+ * result: 1=成功 2=失败 3=逻辑删除
+ */
 @Data
-@TableName("quotas")
-public class QuotaEntity {
+@TableName("operation_logs")
+public class OperationLogEntity {
 
     @TableId(type = IdType.AUTO)
     private Long id;
     private String idStr;
     private Long tenantId;
     private Long userId;
-    private Long totalQuota;
-    private Long usedQuota;
-    /** 1=铜牌 2=银牌 3=金牌 */
-    private Integer memberLevel;
-    /** 当前偏好模型：deepseek-chat / deepseek-free */
-    private String preferredModel;
-    private LocalDateTime expireAt;
+    private String action;
+    private String target;
+    private Integer result;
+    private String detail;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    private LocalDateTime updatedAt;
 }

@@ -3,9 +3,10 @@
     <view class="page-title">我的操作记录</view>
 
     <view class="card">
+      <view v-if="!records.length && !loading" class="empty">暂无操作记录</view>
       <view v-for="(r, i) in records" :key="i" class="row">
         <view class="log-info">
-          <view class="log-time">{{ r.time }}</view>
+          <view class="log-time">{{ formatTime(r.time) }}</view>
           <view class="log-action">{{ r.action }}</view>
         </view>
         <text class="badge" :class="r.status">{{ r.statusText }}</text>
@@ -17,14 +18,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
+import { ledgerApi, type LogVo } from '@/api';
 
-const records = ref([
-  { time: '09-05 14:20', action: '发起会话（政策咨询专家）', status: 'ok', statusText: '成功' },
-  { time: '09-05 10:15', action: '上传资料（会议纪要0905.docx）', status: 'ok', statusText: '成功' },
-  { time: '09-05 09:58', action: '购买词元包（10万词元）', status: 'ok', statusText: '已支付' },
-  { time: '09-04 17:02', action: '删除会话（旧手机迁移）', status: 'ok', statusText: '逻辑删除' }
-]);
+const records = ref<LogVo[]>([]);
+const loading = ref(true);
+
+async function load() {
+  loading.value = true;
+  try {
+    const r = await ledgerApi.logs(1, 50);
+    if (r.code === 0) records.value = r.data || [];
+  } finally {
+    loading.value = false;
+  }
+}
+onMounted(load);
+onShow(load);
+
+function formatTime(t: string) {
+  if (!t) return '';
+  const d = new Date(t);
+  return d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
 </script>
 
 <style scoped>
@@ -41,4 +58,5 @@ const records = ref([
 .divider { height: 1px; background: #e6eaf2; margin-top: 11px; }
 .muted { color: #6b7486; font-size: 12px; }
 .tip { margin-top: 8px; }
+.empty { text-align: center; color: #6b7486; padding: 32px; font-size: 13px; }
 </style>

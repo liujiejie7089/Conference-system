@@ -1,4 +1,4 @@
-package io.aioa.ledger.repo.entity;
+package io.aioa.session.repo.entity;
 
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
@@ -9,25 +9,25 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
+/**
+ * 引用溯源实体
+ * source_type: 1=知识库 2=Tool结果 3=外部链接
+ */
 @Data
-@TableName("quotas")
-public class QuotaEntity {
+@TableName("citations")
+public class CitationEntity {
 
     @TableId(type = IdType.AUTO)
     private Long id;
     private String idStr;
+    private Long messageId;
     private Long tenantId;
-    private Long userId;
-    private Long totalQuota;
-    private Long usedQuota;
-    /** 1=铜牌 2=银牌 3=金牌 */
-    private Integer memberLevel;
-    /** 当前偏好模型：deepseek-chat / deepseek-free */
-    private String preferredModel;
-    private LocalDateTime expireAt;
+    private Integer sourceType;
+    private String sourceId;
+    private String title;
+    private String url;
+    private String snippet;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    private LocalDateTime updatedAt;
 }

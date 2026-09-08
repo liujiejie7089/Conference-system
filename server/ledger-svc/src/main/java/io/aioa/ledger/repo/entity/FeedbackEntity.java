@@ -9,25 +9,27 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
+/**
+ * 反馈实体 FR-H4
+ * type: 1=错误 2=有害 3=侵权
+ * status: 1=待处理 2=已处理 3=已关闭
+ */
 @Data
-@TableName("quotas")
-public class QuotaEntity {
+@TableName("feedbacks")
+public class FeedbackEntity {
 
     @TableId(type = IdType.AUTO)
     private Long id;
     private String idStr;
     private Long tenantId;
     private Long userId;
-    private Long totalQuota;
-    private Long usedQuota;
-    /** 1=铜牌 2=银牌 3=金牌 */
-    private Integer memberLevel;
-    /** 当前偏好模型：deepseek-chat / deepseek-free */
-    private String preferredModel;
-    private LocalDateTime expireAt;
+    private Long messageId;
+    /** 1=错误 2=有害 3=侵权 */
+    private Integer type;
+    private String content;
+    /** 1=待处理 2=已处理 3=已关闭 */
+    private Integer status;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    private LocalDateTime updatedAt;
 }

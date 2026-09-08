@@ -41,12 +41,16 @@ public class QuotaController {
                     .totalQuota(0L)
                     .usedQuota(0L)
                     .remainingQuota(0L)
+                    .memberLevel(1)
+                    .preferredModel("deepseek-chat")
                     .build());
         }
         return R.ok(QuotaVo.builder()
                 .totalQuota(e.getTotalQuota())
                 .usedQuota(e.getUsedQuota())
                 .remainingQuota(e.getTotalQuota() - e.getUsedQuota())
+                .memberLevel(e.getMemberLevel() != null ? e.getMemberLevel() : 1)
+                .preferredModel(e.getPreferredModel() != null ? e.getPreferredModel() : "deepseek-chat")
                 .build());
     }
 

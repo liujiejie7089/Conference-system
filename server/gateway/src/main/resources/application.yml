@@ -15,15 +15,15 @@ spring:
         - id: session-svc
           uri: http://localhost:8082
           predicates:
-            - Path=/api/v1/sessions/**
+            - Path=/api/v1/sessions/**,/api/v1/messages/**
         - id: agent-svc
           uri: http://localhost:8083
           predicates:
-            - Path=/api/v1/agents/**,/api/v1/tools/**,/api/v1/approvals/**,/api/v1/connectors/**
+            - Path=/api/v1/agents/**,/api/v1/tools/**,/api/v1/approvals/**,/api/v1/connectors/**,/api/v1/skill-forms/**,/api/v1/todos/**
         - id: ledger-svc
           uri: http://localhost:8084
           predicates:
-            - Path=/api/v1/ledger/**,/api/v1/quota/**,/api/v1/usage/**
+            - Path=/api/v1/ledger/**,/api/v1/quota/**,/api/v1/usage/**,/api/v1/membership/**
       # SSE / WebSocket 不读响应体，需要保持流式
       default-filters: []
 

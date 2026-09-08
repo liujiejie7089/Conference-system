@@ -209,6 +209,32 @@ CREATE TABLE IF NOT EXISTS approval_tickets (
   KEY idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE IF NOT EXISTS sensitive_words (
+  id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  id_str          VARCHAR(32)  NOT NULL,
+  tenant_id       BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  word            VARCHAR(128) NOT NULL,
+  category        VARCHAR(32)  NOT NULL DEFAULT 'default',
+  action          TINYINT      NOT NULL DEFAULT 1,
+  status          TINYINT      NOT NULL DEFAULT 1,
+  created_at      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (id),
+  KEY idx_tenant_category (tenant_id, category),
+  KEY idx_word (word(64))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+INSERT IGNORE INTO sensitive_words (id_str, tenant_id, word, category, action, status) VALUES
+  ('sw001', 0, '密码',     'security',  2, 1),
+  ('sw002', 0, '账号密码', 'security',  2, 1),
+  ('sw003', 0, '身份证号', 'security',  2, 1),
+  ('sw004', 0, '银行卡号', 'security',  2, 1),
+  ('sw005', 0, '删除所有', 'danger',    2, 1),
+  ('sw006', 0, '清空数据', 'danger',    2, 1),
+  ('sw007', 0, '对外发布', 'publish',   1, 1),
+  ('sw008', 0, '报送上级', 'publish',   1, 1),
+  ('sw009', 0, '发文',     'publish',   1, 1),
+  ('sw010', 0, '通知',     'publish',   1, 1);
+
 INSERT IGNORE INTO agents (id_str, tenant_id, slug, name, description, model, system_prompt, status, sort) VALUES
   ('agt-general',  1, 'general',  '通用助手',  '日常问答与多技能协作',  'deepseek-chat', '你是 AIOA 的通用办公助手，简洁准确地回答用户问题。', 1, 10),
   ('agt-travel',   1, 'travel',   '差旅专家',  '差旅查询与申请',        'deepseek-chat', '你是差旅专家，协助用户查询票务、住宿并起草申请。', 1, 20),
@@ -224,6 +250,8 @@ CREATE TABLE IF NOT EXISTS quotas (
   user_id         BIGINT UNSIGNED NOT NULL,
   total_quota     BIGINT       NOT NULL DEFAULT 1000000,
   used_quota      BIGINT       NOT NULL DEFAULT 0,
+  member_level    TINYINT      NOT NULL DEFAULT 1,
+  preferred_model VARCHAR(64)  NOT NULL DEFAULT 'deepseek-chat',
   expire_at       DATETIME(3)  NULL,
   created_at      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   updated_at      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
@@ -265,5 +293,57 @@ CREATE TABLE IF NOT EXISTS ledger_entries (
   KEY idx_user (tenant_id, user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-INSERT IGNORE INTO quotas (id_str, tenant_id, user_id, total_quota, used_quota) VALUES
-  ('qta-admin', 1, 1, 1000000, 0);
+INSERT IGNORE INTO quotas (id_str, tenant_id, user_id, total_quota, used_quota, member_level, preferred_model) VALUES
+  ('qta-admin', 1, 1, 1000000, 0, 1, 'deepseek-chat');
+
+CREATE TABLE IF NOT EXISTS recharge_orders (
+  id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  id_str          VARCHAR(32)  NOT NULL,
+  tenant_id       BIGINT UNSIGNED NOT NULL,
+  user_id         BIGINT UNSIGNED NOT NULL,
+  type            TINYINT      NOT NULL DEFAULT 1,
+  product_code    VARCHAR(64)  NOT NULL,
+  product_name    VARCHAR(128) NOT NULL,
+  token_amount    BIGINT       NOT NULL DEFAULT 0,
+  amount          DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  status          TINYINT      NOT NULL DEFAULT 1,
+  pay_method      VARCHAR(32)  NULL,
+  trade_no        VARCHAR(128) NULL,
+  paid_at         DATETIME(3)  NULL,
+  created_at      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (id),
+  KEY idx_user (tenant_id, user_id),
+  KEY idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- FR-H1/H2: 操作留痕表
+CREATE TABLE IF NOT EXISTS operation_logs (
+  id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  id_str          VARCHAR(32)  NOT NULL,
+  tenant_id       BIGINT UNSIGNED NOT NULL,
+  user_id         BIGINT UNSIGNED NOT NULL,
+  action          VARCHAR(32)  NOT NULL,
+  target          VARCHAR(128) NOT NULL DEFAULT '',
+  result          TINYINT      NOT NULL DEFAULT 1,
+  detail          VARCHAR(512) NULL,
+  created_at      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (id),
+  KEY idx_user (tenant_id, user_id),
+  KEY idx_action (action)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- FR-H4: 反馈表
+CREATE TABLE IF NOT EXISTS feedbacks (
+  id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  id_str          VARCHAR(32)  NOT NULL,
+  tenant_id       BIGINT UNSIGNED NOT NULL,
+  user_id         BIGINT UNSIGNED NOT NULL,
+  message_id      BIGINT       NULL,
+  type            TINYINT      NOT NULL DEFAULT 1,
+  content         TEXT         NOT NULL,
+  status          TINYINT      NOT NULL DEFAULT 1,
+  created_at      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (id),
+  KEY idx_user (tenant_id, user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
