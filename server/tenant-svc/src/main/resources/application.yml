@@ -18,6 +18,9 @@ spring:
     port: 6379
     database: 0
   servlet:
+    encoding:
+      charset: UTF-8
+      force: true
     multipart:
       max-file-size: 10MB
 

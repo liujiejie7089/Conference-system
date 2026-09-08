@@ -2,6 +2,10 @@ server:
   port: 8083
 
 spring:
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
   application:
     name: aioa-agent-svc
   datasource:

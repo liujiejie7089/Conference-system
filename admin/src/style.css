@@ -1,0 +1,7 @@
+html, body, #app { height: 100%; margin: 0; font-family: -apple-system, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif; background: #f4f6fa; }
+.page-card { background: #fff; border-radius: 8px; padding: 18px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+.page-title { font-size: 17px; font-weight: 700; margin: 0 0 14px; color: #1f2329; }
+.muted { color: #8c93a3; font-size: 12px; }
+.metric-card { background: linear-gradient(135deg,#2f6fed,#5b8def); color: #fff; padding: 18px; border-radius: 8px; }
+.metric-card .num { font-size: 28px; font-weight: 800; }
+.metric-card .label { font-size: 12px; opacity: .9; margin-top: 4px; }

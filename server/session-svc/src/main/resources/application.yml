@@ -2,6 +2,10 @@ server:
   port: 8082
 
 spring:
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
   application:
     name: aioa-session-svc
   datasource:

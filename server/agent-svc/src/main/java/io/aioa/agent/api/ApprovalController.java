@@ -115,7 +115,7 @@ public class ApprovalController {
         if (ticket == null || ticket.getSessionId() == null) return;
         try {
             String opinionText = (opinion == null || opinion.isBlank()) ? "" : "，审批意见：" + opinion;
-            String content = "审批通知：工单 #" + ticket.getIdStr() + " 已" + result + opinionText;
+            String content = "审批通知：工单 #" + ticket.getIdStr() + " " + result + opinionText;
 
             Map<String, Object> body = new HashMap<>();
             body.put("content", content);
@@ -123,9 +123,9 @@ public class ApprovalController {
 
             try (HttpResponse resp = HttpRequest.post(
                             "http://localhost:8090/api/v1/sessions/" + ticket.getSessionId() + "/inject")
-                    .header("Content-Type", "application/json")
+                    .header("Content-Type", "application/json;charset=UTF-8")
                     .header("Authorization", "Bearer " + token)
-                    .body(JSONUtil.toJsonStr(body))
+                    .body(JSONUtil.toJsonStr(body).getBytes(java.nio.charset.StandardCharsets.UTF_8))
                     .timeout(5000)
                     .execute()) {
                 log.info("[审批] 结果回注会话: session={} result={} http={}",
